@@ -11,7 +11,7 @@ LEFT JOIN airconditioningtype USING (airconditioningtypeid)
 LEFT JOIN architecturalstyletype USING (architecturalstyletypeid)
 LEFT JOIN buildingclasstype USING (buildingclasstypeid);
 
-SELECT predictions_2017.logerror, e.*, 
+SELECT predictions_2017.logerror, e.transdate, 
 		properties_2017.*, 
         typeconstructiontype.typeconstructiondesc, 
         storytype.storydesc, 
