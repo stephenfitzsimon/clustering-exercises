@@ -14,6 +14,12 @@ def mall_data():
     df = mall_scale(df, ['age', 'annual_income', 'spending_score'])
     return df
 
+def mall_unscaled():
+    df = acquire_mall()
+    df = encode_columns(df, ['gender'])
+    df = handle_missing(df)
+    return df
+
 def acquire_mall(query_db=False):
     #file name string literal
     #check if file exists and query_dg flag

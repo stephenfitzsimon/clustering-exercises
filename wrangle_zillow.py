@@ -10,13 +10,16 @@ from sklearn.preprocessing import MinMaxScaler
 
 from env import get_db_url
 
-RAND_SEED = 987
+RAND_SEED = 739
 FILENAME = 'zillow_clustering_data.csv'
 
 def wrangle_data():
     df = get_zillow_data()
     df = filter_properties(df)
-    df = handle_missing_values(df, 0.99, 0.99)
+    df = handle_missing_values(df, 0.10, 0.10)
+    df = clearing_fips(df)
+    df['latitude'] = df['latitude']*10**-6
+    df['longitude'] = df['longitude']*10**-6
     return df
 
 def get_zillow_data(query_db=False):
@@ -103,15 +106,52 @@ def handle_missing_values(df, prop_required_column, prop_required_row):
     #get the proportion of nulls in each column
     null_proportion_df = return_col_percent_null(df)
     #get the columns to keep
-    columns_to_keep = null_proportion_df[null_proportion_df['percent_null'] < ( 1 - prop_required_column)]['column_name'].tolist()
+    columns_to_keep = null_proportion_df[null_proportion_df['percent_null'] < (prop_required_column)]['column_name'].tolist()
     # get the columns from the dataframe
     df = df[columns_to_keep]
     #filter the rows
-    df = df[(df.isnull().sum(axis=1)/df.shape[1] < (1 - prop_required_row))]
+    df = df[(df.isnull().sum(axis=1)/df.shape[1] < (prop_required_row))]
     return df
 
 def filter_properties(df):
-    df = df[df['unitcnt'] == 1]
+    #df = df[df['unitcnt'] == 1] # <- the problem is here
     filter_cols = ['Single Family Residential', 'Mobile Home', 'Manufactured, Modular, Prefabricated Homes', 'Residential General', 'Townhouse']
     df = df[df['propertylandusedesc'].isin(filter_cols)]
     return df
+
+def clearing_fips(df):
+    '''This function takes in a DataFrame of unprepared Zillow information and generates a new
+    'county' column, with the county name based on the FIPS code. Drops the 'fips' column and returns
+    the new DataFrame.
+
+    Args:
+        df (Dataframe) : dataframe containing zillow data
+    Return:
+        (DataFrame) : a dataframe with a cleared fips columns
+    '''
+    # create a list of our conditions
+    fips = [
+        (df['fips'] == 6037.0),
+        (df['fips'] == 6059.0),
+        (df['fips'] == 6111.0)
+        ]
+    # create a list of the values we want to assign for each condition
+    counties = ['Los Angeles', 'Orange', 'Ventura']
+    # create a new column and use np.select to assign values to it using our lists as arguments
+    df['county'] = np.select(fips, counties)
+    df = df.drop(columns = 'fips')
+    return df
+
+def split_data(df):
+    '''splits the zillow dataframe into train, test and validate subsets
+    
+    Args:
+        df (DataFrame) : dataframe to split
+    Return:
+        train, test, validate (DataFrame) :  dataframes split from the original dataframe
+    '''
+    #make train and test
+    train, test = train_test_split(df, train_size = 0.8, random_state=RAND_SEED)
+    #make validate
+    train, validate = train_test_split(train, train_size = 0.7, random_state=RAND_SEED)
+    return train, validate, test
